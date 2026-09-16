@@ -71,6 +71,12 @@ export default function ContractDetailPage() {
           <SemaphoreBadge value={execution.semaphore} />
           <div className="flex gap-2">
             <Link
+              href={`/contracts/${contract.id}/payments`}
+              className="rounded-md border border-institucional px-3 py-1.5 text-xs font-semibold text-institucional hover:bg-institucional/5"
+            >
+              Ver pagos
+            </Link>
+            <Link
               href={`/contracts/${contract.id}/reports`}
               className="rounded-md border border-institucional px-3 py-1.5 text-xs font-semibold text-institucional hover:bg-institucional/5"
             >
@@ -87,6 +93,7 @@ export default function ContractDetailPage() {
         <StatCard label="Desviación" value={`${execution.deviation}%`} highlight={execution.semaphore} />
         <StatCard label="Valor actual" value={currencyFormatter.format(Number(contract.currentValue))} small />
         <StatCard label="Saldo" value={currencyFormatter.format(Number(execution.balance))} small />
+        <StatCard label="Pagos pendientes" value={String(dashboard.paymentsPending)} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">

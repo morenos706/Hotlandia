@@ -96,3 +96,18 @@ export interface Alert {
   isResolved: boolean;
   createdAt: string;
 }
+
+export type PaymentStatus = 'PENDIENTE' | 'RADICADO' | 'EN_REVISION' | 'APROBADO' | 'PAGADO' | 'RECHAZADO';
+
+export interface Payment {
+  id: string;
+  periodLabel: string;
+  invoiceNumber?: string | null;
+  accountNumber?: string | null;
+  value: string;
+  status: PaymentStatus;
+  submittedDate?: string | null;
+  paidDate?: string | null;
+  observations?: string | null;
+  createdAt: string;
+}
