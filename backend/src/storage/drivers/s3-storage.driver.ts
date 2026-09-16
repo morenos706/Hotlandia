@@ -51,6 +51,18 @@ export class S3StorageDriver implements StorageDriver {
     );
   }
 
+  async download(key: string): Promise<Buffer> {
+    const response = await this.client.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+    const stream = response.Body as NodeJS.ReadableStream;
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  }
+
   async delete(key: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }

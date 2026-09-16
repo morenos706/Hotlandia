@@ -34,6 +34,11 @@ export class LocalStorageDriver implements StorageDriver {
     return `/uploads/${key}`;
   }
 
+  async download(key: string): Promise<Buffer> {
+    const fullPath = path.join(this.basePath, key);
+    return fs.readFile(fullPath);
+  }
+
   async delete(key: string): Promise<void> {
     const fullPath = path.join(this.basePath, key);
     await fs.rm(fullPath, { force: true });

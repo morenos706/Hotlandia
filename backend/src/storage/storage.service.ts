@@ -19,6 +19,10 @@ export class StorageService implements StorageDriver {
     return this.driver.getUrl(key);
   }
 
+  download(key: string) {
+    return this.driver.download(key);
+  }
+
   delete(key: string) {
     return this.driver.delete(key);
   }

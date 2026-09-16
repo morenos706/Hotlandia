@@ -3,22 +3,58 @@ import PDFDocument from 'pdfkit';
 import { Workbook } from 'exceljs';
 import { PrismaService } from '../prisma/prisma.service';
 import { DashboardService } from '../dashboard/dashboard.service';
+import { StorageService } from '../storage/storage.service';
+
+const IMAGE_MIME_PREFIX = 'image/';
 
 @Injectable()
 export class ReportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dashboard: DashboardService,
+    private readonly storage: StorageService,
   ) {}
 
   async generateExecutionPdf(contractId: string, contractorId: string): Promise<Buffer> {
-    const [contract, dashboardData] = await Promise.all([
+    const [contract, dashboardData, evidences, indicatorResults, payments] = await Promise.all([
       this.getContractOrThrow(contractId, contractorId),
       this.dashboard.getContractDashboard(contractId, contractorId),
+      this.prisma.evidence.findMany({
+        where: { contractId },
+        include: { activity: true },
+        orderBy: { uploadedAt: 'asc' },
+      }),
+      this.prisma.indicatorResult.findMany({
+        where: { contractId },
+        include: { indicator: true },
+        orderBy: { calculatedAt: 'asc' },
+      }),
+      this.prisma.payment.findMany({ where: { contractId }, orderBy: { createdAt: 'asc' } }),
     ]);
 
+    const isPhoto = (e: (typeof evidences)[number]) =>
+      e.type === 'FOTOGRAFIA' && e.mimeType.startsWith(IMAGE_MIME_PREFIX);
+    const photoEvidences = evidences.filter(isPhoto);
+    const otherEvidences = evidences.filter((e) => !isPhoto(e));
+
+    // Se descargan antes de construir el PDF: PDFDocument se arma de forma
+    // síncrona dentro de la Promise, así que todo el trabajo asíncrono
+    // (traer las fotos del storage) debe resolverse primero.
+    const photos = await Promise.all(
+      photoEvidences.map(async (evidence) => {
+        try {
+          return { evidence, buffer: await this.storage.download(evidence.storageKey) };
+        } catch {
+          return { evidence, buffer: null };
+        }
+      }),
+    );
+
     return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
+      // bufferPages: true es necesario para poder recorrer todas las páginas
+      // al final (addFooter) — sin esto, pdfkit descarta del buffer las
+      // páginas ya emitidas apenas el documento supera un par de páginas.
+      const doc = new PDFDocument({ margin: 50, size: 'LETTER', bufferPages: true });
       const chunks: Buffer[] = [];
       doc.on('data', (chunk) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
@@ -78,8 +114,113 @@ export class ReportsService {
       doc.fontSize(10).text(`Alertas sin resolver: ${dashboardData.unresolvedAlerts}`);
       doc.moveDown();
 
-      // 7. Observaciones
-      section(doc, '6. Observaciones');
+      // 7. Registro fotográfico
+      doc.addPage();
+      section(doc, '6. Registro fotográfico');
+      if (photos.length === 0) {
+        doc.fontSize(10).text('No se cargaron fotografías como evidencia para este contrato.');
+      } else {
+        for (const { evidence, buffer } of photos) {
+          if (doc.y > doc.page.height - 260) {
+            doc.addPage();
+          }
+          if (buffer) {
+            try {
+              // Se calcula manualmente el tamaño y se avanza doc.y de forma
+              // explícita: doc.image({ fit, align }) no siempre desplaza el
+              // cursor en flujo, lo que hacía que el pie de foto quedara
+              // superpuesto sobre la imagen en vez de debajo.
+              const maxWidth = 320;
+              const maxHeight = 220;
+              // @types/pdfkit no declara openImage aunque existe en runtime
+              // (usado internamente por doc.image()); se necesita aquí para
+              // conocer el tamaño real antes de avanzar el cursor.
+              const img = (doc as unknown as { openImage(src: Buffer): { width: number; height: number } }).openImage(
+                buffer,
+              );
+              const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+              const renderWidth = img.width * scale;
+              const renderHeight = img.height * scale;
+              const contentWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+              const x = doc.page.margins.left + (contentWidth - renderWidth) / 2;
+              const y = doc.y;
+              doc.image(buffer, x, y, { width: renderWidth, height: renderHeight });
+              doc.y = y + renderHeight + 4;
+            } catch {
+              doc.fontSize(9).fillColor('#999').text(`[No se pudo procesar la imagen: ${evidence.originalFileName}]`);
+            }
+          } else {
+            doc.fontSize(9).fillColor('#999').text(`[No se pudo recuperar la imagen: ${evidence.originalFileName}]`);
+          }
+          doc
+            .fontSize(8)
+            .fillColor('#555')
+            .text(
+              [
+                evidence.activity ? `${evidence.activity.code} — ${evidence.activity.name}` : 'Sin actividad asociada',
+                evidence.description ?? null,
+                formatDate(evidence.uploadedAt),
+              ]
+                .filter(Boolean)
+                .join(' · '),
+              { align: 'center' },
+            );
+          doc.fillColor('#000').moveDown();
+        }
+      }
+
+      // 8. Otras evidencias y documentos
+      doc.addPage();
+      section(doc, '7. Otras evidencias y documentos');
+      if (otherEvidences.length === 0) {
+        doc.fontSize(10).text('No se registraron otros documentos de evidencia.');
+      } else {
+        for (const evidence of otherEvidences) {
+          doc
+            .fontSize(9)
+            .text(
+              `• [${evidence.type}] ${evidence.originalFileName}` +
+                `${evidence.activity ? ` — ${evidence.activity.code} ${evidence.activity.name}` : ''}` +
+                ` — ${formatDate(evidence.uploadedAt)}`,
+            );
+        }
+      }
+      doc.moveDown();
+
+      // 9. Indicadores
+      section(doc, '8. Indicadores');
+      if (indicatorResults.length === 0) {
+        doc.fontSize(10).text('No se han registrado resultados de indicadores para este contrato.');
+      } else {
+        for (const result of indicatorResults) {
+          doc
+            .fontSize(9)
+            .text(
+              `• ${result.indicator.name} [${result.indicator.category}] — ${result.periodLabel}: ${result.value}${result.indicator.unit ? ` ${result.indicator.unit}` : ''}`,
+            );
+        }
+      }
+      doc.moveDown();
+
+      // 10. Resumen de pagos
+      section(doc, '9. Resumen de pagos');
+      if (payments.length === 0) {
+        doc.fontSize(10).text('No se han registrado pagos para este contrato.');
+      } else {
+        for (const payment of payments) {
+          doc
+            .fontSize(9)
+            .text(
+              `• ${payment.periodLabel} — ${formatCurrency(payment.value)} — Estado: ${payment.status}` +
+                `${payment.invoiceNumber ? ` — Factura: ${payment.invoiceNumber}` : ''}` +
+                `${payment.disbursementNumber ? ` — Egreso: ${payment.disbursementNumber}` : ''}`,
+            );
+        }
+      }
+      doc.moveDown();
+
+      // 11. Observaciones
+      section(doc, '10. Observaciones');
       doc.fontSize(10).text(contract.observations ?? 'Sin observaciones registradas.');
 
       addFooter(doc);
