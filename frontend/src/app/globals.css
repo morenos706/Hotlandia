@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-institucional: #0b3d91;
+}
+
+body {
+  background-color: #f4f6fb;
+  color: #1a1a1a;
+}
+
+.badge-verde {
+  @apply bg-estado-verde/10 text-estado-verde border border-estado-verde/30;
+}
+.badge-amarillo {
+  @apply bg-estado-amarillo/10 text-estado-amarillo border border-estado-amarillo/30;
+}
+.badge-rojo {
+  @apply bg-estado-rojo/10 text-estado-rojo border border-estado-rojo/30;
+}
