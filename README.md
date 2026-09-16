@@ -7,14 +7,14 @@ PDF/Excel, con trazabilidad de auditoría.
 
 > Ver `docs/ARCHITECTURE.md` para el detalle de arquitectura y alcance, y
 > `docs/ROADMAP.md` para lo que queda documentado como fases futuras
-> (multi-actor con supervisor, multi-tenant, IA, PWA, infraestructura AWS
-> real, CI/CD).
+> (multi-actor con supervisor, multi-tenant, IA, PWA).
 
 ## Estructura
 
 ```
 backend/    API NestJS + Prisma + PostgreSQL
 frontend/   Next.js (App Router) + Tailwind CSS
+infra/      Infraestructura AWS piloto (AWS CDK, TypeScript)
 docs/       Arquitectura, modelo de datos, roadmap
 ```
 
@@ -70,6 +70,12 @@ Cubre especialmente el motor de cálculo contractual (porcentajes,
 ejecución ponderada, ejecución temporal, semáforo) y las reglas de negocio
 de modificaciones contractuales y registro de ejecución (ver
 `docs/ARCHITECTURE.md`).
+
+## Despliegue en AWS
+
+Ver `infra/README.md` para desplegar la infraestructura piloto (VPC, RDS,
+S3, ECS Fargate, ALB) con AWS CDK, incluyendo costo estimado y pasos de
+build/push de imágenes.
 
 ## Aviso
 

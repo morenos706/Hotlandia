@@ -17,9 +17,29 @@ código a medias que aparente estar terminado:
   `contracts` para aislar datos entre entidades (SaaS).
 
 ## Fase 4 — Infraestructura AWS real
-- Terraform/CDK para RDS Postgres, S3, CloudFront, ECS Fargate, SES, WAF,
-  Route 53, CloudWatch, backups con AWS Backup.
-- CI/CD (GitHub Actions) con ambientes dev/staging/prod.
+
+**Piloto implementado** en `infra/` (AWS CDK en TypeScript): VPC sin NAT
+Gateway, RDS PostgreSQL, S3, dos repositorios ECR, cluster ECS Fargate
+(backend privado vía Service Connect + frontend público vía ALB),
+Secrets Manager para credenciales, dominio/HTTPS opcional vía Route 53 +
+ACM. Ver `infra/README.md` para el paso a paso de despliegue. Un workflow
+de CI (`\.github/workflows/ci.yml`) valida build/tests/`cdk synth` en
+cada push, y un workflow de despliegue manual
+(`.github/workflows/deploy-aws.yml`, deshabilitado por defecto —
+requiere secrets propios) automatiza build+push+deploy cuando se decida
+usarlo.
+
+Pendiente para una escala de producción real (no incluido en el piloto
+por costo/complejidad, ver comentarios `// cambiar ... antes de
+producción real` en `infra/lib/contractus-stack.ts`):
+- RDS Multi-AZ, `deletionProtection: true`, `removalPolicy: RETAIN`.
+- CloudFront + WAF delante del ALB.
+- Auto-scaling de los servicios ECS (hoy `desiredCount: 1` fijo).
+- Amazon SES para correo (no incluido en el piloto; el sistema no envía
+  correos todavía).
+- AWS Backup como capa adicional sobre los backups nativos de RDS/S3.
+- Ambientes separados (dev/staging/prod) como stacks distintos de CDK
+  (`environmentName` ya es un parámetro del stack, listo para eso).
 
 ## Fase 5 — IA y OCR
 - Integración Amazon Bedrock para asistencia en generación de informes y

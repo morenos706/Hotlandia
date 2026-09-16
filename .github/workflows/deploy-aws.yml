@@ -1,0 +1,85 @@
+# Despliegue a AWS — DESHABILITADO por defecto (solo workflow_dispatch).
+#
+# Requiere configurar estos secrets del repositorio antes de ejecutarlo
+# (Settings > Secrets and variables > Actions):
+#   AWS_ACCOUNT_ID            - ID de cuenta de AWS (12 dígitos)
+#   AWS_REGION                - región, ej. us-east-1
+#   AWS_ROLE_TO_ASSUME        - ARN de un rol IAM con permisos de despliegue,
+#                               configurado para OIDC de GitHub Actions
+#                               (ver https://docs.github.com/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)
+#
+# Este workflow NUNCA se ejecuta automáticamente en push/PR: solo se
+# dispara manualmente desde la pestaña Actions ("Run workflow"), como
+# salvaguarda para no desplegar infraestructura real sin intención
+# explícita.
+name: Deploy a AWS (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environmentName:
+        description: 'Nombre del ambiente (ej. pilot, staging, prod)'
+        required: true
+        default: 'pilot'
+      domainName:
+        description: 'Dominio propio (opcional, requiere Hosted Zone en Route 53)'
+        required: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias de infraestructura
+        run: npm ci
+        working-directory: infra
+
+      - name: Desplegar stack de CDK
+        run: |
+          npx cdk deploy \
+            -c environmentName=${{ inputs.environmentName }} \
+            ${{ inputs.domainName != '' && format('-c domainName={0}', inputs.domainName) || '' }} \
+            --require-approval never
+        working-directory: infra
+        env:
+          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+          CDK_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+
+      - name: Login en ECR
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+            docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+      - name: Build y push de la imagen del backend
+        run: |
+          REPO=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/contractus360-${{ inputs.environmentName }}-backend
+          docker build -t $REPO:${{ github.sha }} -t $REPO:latest backend
+          docker push $REPO:${{ github.sha }}
+          docker push $REPO:latest
+
+      - name: Build y push de la imagen del frontend
+        run: |
+          REPO=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/contractus360-${{ inputs.environmentName }}-frontend
+          docker build -t $REPO:${{ github.sha }} -t $REPO:latest frontend
+          docker push $REPO:${{ github.sha }}
+          docker push $REPO:latest
+
+      - name: Forzar nuevo despliegue de los servicios ECS
+        run: |
+          CLUSTER=contractus360-${{ inputs.environmentName }}-cluster
+          aws ecs update-service --cluster $CLUSTER --service contractus360-${{ inputs.environmentName }}-backend --force-new-deployment --region ${{ secrets.AWS_REGION }}
+          aws ecs update-service --cluster $CLUSTER --service contractus360-${{ inputs.environmentName }}-frontend --force-new-deployment --region ${{ secrets.AWS_REGION }}

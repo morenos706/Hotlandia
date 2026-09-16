@@ -10,3 +10,5 @@ coverage/
 uploads/
 .DS_Store
 *.tsbuildinfo
+cdk.out/
+cdk.context.json

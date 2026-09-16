@@ -23,8 +23,10 @@ sistema en esta fase), pero conserva:
 - Generación de informes PDF y exportación a Excel.
 
 No se implementa: RBAC multi-rol, multi-tenant entre entidades, motor de
-IA/Bedrock/Textract, firma electrónica, PWA offline, ni el pipeline de
-CI/CD hacia AWS. Se documentan como Fase 2 en `docs/ROADMAP.md`.
+IA/Bedrock/Textract, firma electrónica, ni PWA offline. Se documentan
+como fases futuras en `docs/ROADMAP.md`. La infraestructura AWS piloto
+(Fase 4) sí está implementada — ver la sección "Infraestructura AWS" más
+abajo y `infra/README.md`.
 
 ## Stack tecnológico
 
@@ -132,6 +134,30 @@ versión mayor que no se hizo en esta entrega por el riesgo de romper el
 App Router recién construido sin tiempo de regresión completo. Antes de
 exponer este sistema a tráfico no confiable en producción, se debe evaluar
 y ejecutar esa migración (o mitigar en el WAF/CloudFront de la Fase 4).
+
+## Infraestructura AWS
+
+La infraestructura piloto/bajo-costo está definida como código en
+`infra/` (AWS CDK, TypeScript) — ver `infra/README.md` para el
+procedimiento completo de despliegue, costo estimado y limitaciones.
+
+Resumen de los recursos que aprovisiona:
+
+| Componente | Servicio AWS | Notas |
+|---|---|---|
+| Frontend (Next.js) | ECS Fargate + Application Load Balancer | Único punto público de entrada |
+| Backend (API NestJS) | ECS Fargate (privado) | Alcanzable solo vía ECS Service Connect desde el frontend, nunca expuesto a internet |
+| Base de datos | RDS PostgreSQL 16 | `db.t4g.micro`, una sola AZ, cifrado, backups de 7 días |
+| Archivos (evidencias/documentos) | S3 | Privado, versionado, cifrado SSE-S3 |
+| Imágenes de contenedor | ECR | Un repositorio por servicio |
+| Secretos | Secrets Manager | Credenciales de RDS y JWT, nunca en texto plano |
+| Red | VPC (2 AZs, sin NAT Gateway) | Subredes públicas para ECS, aisladas para RDS |
+| Dominio/HTTPS | Route 53 + ACM (opcional) | Solo si se provee un dominio propio con Hosted Zone existente |
+
+Deliberadamente fuera del piloto por costo/complejidad (documentado en
+`docs/ROADMAP.md` — Fase 4 y como comentarios `// cambiar ... antes de
+producción real` en `infra/lib/contractus-stack.ts`): Multi-AZ en RDS,
+CloudFront, WAF, auto-scaling, Amazon SES, AWS Backup.
 
 ## Aviso normativo
 
