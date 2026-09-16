@@ -22,23 +22,23 @@ enum UserRole {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  fullName     String
+  id             String   @id @default(uuid())
+  email          String   @unique
+  passwordHash   String
+  fullName       String
   identification String? // cédula / NIT de la persona natural contratista
-  phone        String?
-  role         UserRole @default(CONTRATISTA)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  phone          String?
+  role           UserRole @default(CONTRATISTA)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  contracts    Contract[]       @relation("ContractContractor")
-  activities   Activity[]       @relation("ActivityResponsible")
+  contracts        Contract[]        @relation("ContractContractor")
+  activities       Activity[]        @relation("ActivityResponsible")
   executionRecords ExecutionRecord[]
-  evidences    Evidence[]
-  documents    Document[]
-  auditLogs    AuditLog[]
+  evidences        Evidence[]
+  documents        Document[]
+  auditLogs        AuditLog[]
 
   @@map("users")
 }
@@ -71,52 +71,52 @@ enum ContractType {
 }
 
 model Contract {
-  id                String         @id @default(uuid())
-  contractNumber    String         @unique
-  vigencia          Int // año fiscal
-  contractType      ContractType
-  modality          String // modalidad de contratación (licitación, mínima cuantía, directa, etc.)
-  purpose           String         @db.Text // objeto contractual
+  id             String       @id @default(uuid())
+  contractNumber String       @unique
+  vigencia       Int // año fiscal
+  contractType   ContractType
+  modality       String // modalidad de contratación (licitación, mínima cuantía, directa, etc.)
+  purpose        String       @db.Text // objeto contractual
 
-  contractorId      String
-  contractor        User           @relation("ContractContractor", fields: [contractorId], references: [id])
+  contractorId        String
+  contractor          User    @relation("ContractContractor", fields: [contractorId], references: [id])
   legalRepresentative String?
 
-  dependency        String?
-  project           String?
-  fundingSource     String?
-  budgetLine        String?
-  cdp               String?
-  rp                String?
-  secopId           String? // referencia informativa, no integración oficial con SECOP II
-  secopUrl          String?
+  dependency    String?
+  project       String?
+  fundingSource String?
+  budgetLine    String?
+  cdp           String?
+  rp            String?
+  secopId       String? // referencia informativa, no integración oficial con SECOP II
+  secopUrl      String?
 
-  initialValue      Decimal        @db.Decimal(18, 2)
-  currentValue      Decimal        @db.Decimal(18, 2)
+  initialValue Decimal @db.Decimal(18, 2)
+  currentValue Decimal @db.Decimal(18, 2)
 
-  startDate         DateTime
-  endDate           DateTime
-  originalEndDate   DateTime // se conserva para calcular desviación de plazo aun con prórrogas
-  termDays          Int
+  startDate       DateTime
+  endDate         DateTime
+  originalEndDate DateTime // se conserva para calcular desviación de plazo aun con prórrogas
+  termDays        Int
 
-  status            ContractStatus @default(EN_PREPARACION)
-  observations      String?        @db.Text
+  status       ContractStatus @default(EN_PREPARACION)
+  observations String?        @db.Text
 
-  toleranceYellow   Decimal        @default(10) @db.Decimal(5, 2) // % de desviación para semáforo amarillo
-  toleranceRed      Decimal        @default(20) @db.Decimal(5, 2) // % de desviación para semáforo rojo
+  toleranceYellow Decimal @default(10) @db.Decimal(5, 2) // % de desviación para semáforo amarillo
+  toleranceRed    Decimal @default(20) @db.Decimal(5, 2) // % de desviación para semáforo rojo
 
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  deletedAt         DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  modifications     ContractModification[]
-  obligations       Obligation[]
-  evidences         Evidence[]
-  documents         Document[]
-  payments          Payment[]
-  alerts            Alert[]
-  indicatorResults  IndicatorResult[]
-  executionPeriods  ExecutionPeriod[]
+  modifications    ContractModification[]
+  obligations      Obligation[]
+  evidences        Evidence[]
+  documents        Document[]
+  payments         Payment[]
+  alerts           Alert[]
+  indicatorResults IndicatorResult[]
+  executionPeriods ExecutionPeriod[]
 
   @@index([contractorId])
   @@index([status])
@@ -134,20 +134,20 @@ enum ModificationType {
 }
 
 model ContractModification {
-  id             String            @id @default(uuid())
-  contractId     String
-  contract       Contract          @relation(fields: [contractId], references: [id])
-  type           ModificationType
-  description    String            @db.Text
-  valueDelta     Decimal?          @db.Decimal(18, 2) // positivo (adición) o negativo (reducción); null si no aplica
-  daysDelta      Int?              // días de prórroga o de suspensión
-  previousValue  Decimal           @db.Decimal(18, 2)
-  newValue       Decimal           @db.Decimal(18, 2)
+  id              String           @id @default(uuid())
+  contractId      String
+  contract        Contract         @relation(fields: [contractId], references: [id])
+  type            ModificationType
+  description     String           @db.Text
+  valueDelta      Decimal?         @db.Decimal(18, 2) // positivo (adición) o negativo (reducción); null si no aplica
+  daysDelta       Int? // días de prórroga o de suspensión
+  previousValue   Decimal          @db.Decimal(18, 2)
+  newValue        Decimal          @db.Decimal(18, 2)
   previousEndDate DateTime
-  newEndDate     DateTime
-  effectiveDate  DateTime
-  documentId     String?
-  createdAt      DateTime          @default(now())
+  newEndDate      DateTime
+  effectiveDate   DateTime
+  documentId      String?
+  createdAt       DateTime         @default(now())
 
   @@index([contractId])
   @@map("contract_modifications")
@@ -158,22 +158,22 @@ model ContractModification {
 // ---------------------------------------------------------------------------
 
 model Obligation {
-  id               String     @id @default(uuid())
+  id               String    @id @default(uuid())
   contractId       String
-  contract         Contract   @relation(fields: [contractId], references: [id])
+  contract         Contract  @relation(fields: [contractId], references: [id])
   code             String
-  description      String     @db.Text
+  description      String    @db.Text
   type             String? // técnica, administrativa, financiera, etc.
-  weightPercentage Decimal    @default(0) @db.Decimal(5, 2)
+  weightPercentage Decimal   @default(0) @db.Decimal(5, 2)
   goal             String?
   indicator        String?
   unitOfMeasure    String?
-  observations     String?    @db.Text
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  observations     String?   @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
 
-  activities       Activity[]
+  activities Activity[]
 
   @@unique([contractId, code])
   @@index([contractId])
@@ -200,31 +200,31 @@ enum Periodicity {
 }
 
 model Activity {
-  id                  String         @id @default(uuid())
-  obligationId        String
-  obligation          Obligation     @relation(fields: [obligationId], references: [id])
-  code                String
-  name                String
-  description         String?        @db.Text
-  goal                String?
-  unitOfMeasure       String
-  plannedQuantity     Decimal        @default(0) @db.Decimal(18, 4)
-  assignedValue        Decimal        @default(0) @db.Decimal(18, 2)
-  weightPercentage    Decimal        @default(0) @db.Decimal(5, 2)
-  startDate           DateTime
-  endDate             DateTime
-  periodicity         Periodicity    @default(MENSUAL)
-  responsibleId       String?
-  responsible         User?          @relation("ActivityResponsible", fields: [responsibleId], references: [id])
-  status              ActivityStatus @default(PENDIENTE)
-  expectedResult      String?        @db.Text
-  requiresEvidence    Boolean        @default(true)
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  deletedAt           DateTime?
+  id               String         @id @default(uuid())
+  obligationId     String
+  obligation       Obligation     @relation(fields: [obligationId], references: [id])
+  code             String
+  name             String
+  description      String?        @db.Text
+  goal             String?
+  unitOfMeasure    String
+  plannedQuantity  Decimal        @default(0) @db.Decimal(18, 4)
+  assignedValue    Decimal        @default(0) @db.Decimal(18, 2)
+  weightPercentage Decimal        @default(0) @db.Decimal(5, 2)
+  startDate        DateTime
+  endDate          DateTime
+  periodicity      Periodicity    @default(MENSUAL)
+  responsibleId    String?
+  responsible      User?          @relation("ActivityResponsible", fields: [responsibleId], references: [id])
+  status           ActivityStatus @default(PENDIENTE)
+  expectedResult   String?        @db.Text
+  requiresEvidence Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  deletedAt        DateTime?
 
-  executionRecords    ExecutionRecord[]
-  evidences           Evidence[]
+  executionRecords ExecutionRecord[]
+  evidences        Evidence[]
 
   @@unique([obligationId, code])
   @@index([obligationId])
@@ -270,7 +270,7 @@ model ExecutionRecord {
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
-  evidences          Evidence[]
+  evidences Evidence[]
 
   @@index([activityId])
   @@index([periodId])
@@ -300,31 +300,31 @@ enum EvidenceStatus {
 }
 
 model Evidence {
-  id                String         @id @default(uuid())
+  id                String           @id @default(uuid())
   contractId        String
-  contract          Contract       @relation(fields: [contractId], references: [id])
+  contract          Contract         @relation(fields: [contractId], references: [id])
   activityId        String?
-  activity          Activity?      @relation(fields: [activityId], references: [id])
+  activity          Activity?        @relation(fields: [activityId], references: [id])
   executionRecordId String?
   executionRecord   ExecutionRecord? @relation(fields: [executionRecordId], references: [id])
 
-  type              EvidenceType
-  status            EvidenceStatus @default(CARGADA)
-  description       String?        @db.Text
+  type        EvidenceType
+  status      EvidenceStatus @default(CARGADA)
+  description String?        @db.Text
 
-  storageKey        String // ruta/clave en el storage (local o S3)
-  originalFileName  String
-  mimeType          String
-  sizeBytes         Int
+  storageKey       String // ruta/clave en el storage (local o S3)
+  originalFileName String
+  mimeType         String
+  sizeBytes        Int
 
-  capturedAt        DateTime? // fecha/hora de la fotografía si viene en el EXIF
-  latitude          Decimal?  @db.Decimal(10, 7)
-  longitude         Decimal?  @db.Decimal(10, 7)
+  capturedAt DateTime? // fecha/hora de la fotografía si viene en el EXIF
+  latitude   Decimal?  @db.Decimal(10, 7)
+  longitude  Decimal?  @db.Decimal(10, 7)
 
-  uploadedById      String
-  uploadedBy        User      @relation(fields: [uploadedById], references: [id])
-  uploadedAt        DateTime  @default(now())
-  observations      String?   @db.Text
+  uploadedById String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  uploadedAt   DateTime @default(now())
+  observations String?  @db.Text
 
   @@index([contractId])
   @@index([activityId])
@@ -363,19 +363,20 @@ enum PaymentStatus {
 }
 
 model Payment {
-  id            String        @id @default(uuid())
-  contractId    String
-  contract      Contract      @relation(fields: [contractId], references: [id])
-  periodLabel   String
-  invoiceNumber String?
-  accountNumber String? // cuenta de cobro
-  value         Decimal       @db.Decimal(18, 2)
-  status        PaymentStatus @default(PENDIENTE)
-  submittedDate DateTime?
-  paidDate      DateTime?
-  observations  String?       @db.Text
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                 String        @id @default(uuid())
+  contractId         String
+  contract           Contract      @relation(fields: [contractId], references: [id])
+  periodLabel        String
+  invoiceNumber      String?
+  accountNumber      String? // cuenta de cobro
+  disbursementNumber String? // número de egreso (comprobante de egreso de tesorería)
+  value              Decimal       @db.Decimal(18, 2)
+  status             PaymentStatus @default(PENDIENTE)
+  submittedDate      DateTime?
+  paidDate           DateTime?
+  observations       String?       @db.Text
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   @@index([contractId])
   @@map("payments")
@@ -402,20 +403,20 @@ model Indicator {
   formulaHint String? // descripción de cómo se calcula (documental, no ejecutable)
   createdAt   DateTime          @default(now())
 
-  results     IndicatorResult[]
+  results IndicatorResult[]
 
   @@map("indicators")
 }
 
 model IndicatorResult {
-  id          String    @id @default(uuid())
-  indicatorId String
-  indicator   Indicator @relation(fields: [indicatorId], references: [id])
-  contractId  String
-  contract    Contract  @relation(fields: [contractId], references: [id])
-  periodLabel String
-  value       Decimal   @db.Decimal(18, 4)
-  calculatedAt DateTime @default(now())
+  id           String    @id @default(uuid())
+  indicatorId  String
+  indicator    Indicator @relation(fields: [indicatorId], references: [id])
+  contractId   String
+  contract     Contract  @relation(fields: [contractId], references: [id])
+  periodLabel  String
+  value        Decimal   @db.Decimal(18, 4)
+  calculatedAt DateTime  @default(now())
 
   @@index([contractId])
   @@index([indicatorId])
@@ -445,15 +446,15 @@ enum AlertSeverity {
 }
 
 model Alert {
-  id          String        @id @default(uuid())
-  contractId  String
-  contract    Contract      @relation(fields: [contractId], references: [id])
-  type        AlertType
-  severity    AlertSeverity
-  message     String        @db.Text
-  isResolved  Boolean       @default(false)
-  resolvedAt  DateTime?
-  createdAt   DateTime      @default(now())
+  id         String        @id @default(uuid())
+  contractId String
+  contract   Contract      @relation(fields: [contractId], references: [id])
+  type       AlertType
+  severity   AlertSeverity
+  message    String        @db.Text
+  isResolved Boolean       @default(false)
+  resolvedAt DateTime?
+  createdAt  DateTime      @default(now())
 
   @@index([contractId])
   @@index([isResolved])

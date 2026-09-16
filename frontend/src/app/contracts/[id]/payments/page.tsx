@@ -45,9 +45,12 @@ export default function ContractPaymentsPage() {
     periodLabel: '',
     invoiceNumber: '',
     accountNumber: '',
+    disbursementNumber: '',
     value: '',
     observations: '',
   });
+
+  const [disbursementDrafts, setDisbursementDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!hasSession()) {
@@ -63,6 +66,9 @@ export default function ContractPaymentsPage() {
     try {
       const { data } = await apiClient.get<Payment[]>(`/contracts/${params.id}/payments`);
       setPayments(data);
+      setDisbursementDrafts(
+        Object.fromEntries(data.map((p) => [p.id, p.disbursementNumber ?? ''])),
+      );
     } finally {
       setLoading(false);
     }
@@ -76,11 +82,12 @@ export default function ContractPaymentsPage() {
         periodLabel: form.periodLabel,
         invoiceNumber: form.invoiceNumber || undefined,
         accountNumber: form.accountNumber || undefined,
+        disbursementNumber: form.disbursementNumber || undefined,
         value: Number(form.value),
         observations: form.observations || undefined,
       });
       setMessage({ type: 'ok', text: 'Pago registrado correctamente.' });
-      setForm({ periodLabel: '', invoiceNumber: '', accountNumber: '', value: '', observations: '' });
+      setForm({ periodLabel: '', invoiceNumber: '', accountNumber: '', disbursementNumber: '', value: '', observations: '' });
       await load();
     } catch (err: any) {
       setMessage({ type: 'error', text: err?.response?.data?.message ?? 'No fue posible registrar el pago' });
@@ -98,6 +105,20 @@ export default function ContractPaymentsPage() {
       await load();
     } catch (err: any) {
       setMessage({ type: 'error', text: err?.response?.data?.message ?? 'No fue posible actualizar el estado' });
+    }
+  }
+
+  async function handleSaveDisbursement(payment: Payment) {
+    const draft = disbursementDrafts[payment.id]?.trim() ?? '';
+    if (draft === (payment.disbursementNumber ?? '')) return;
+
+    setMessage(null);
+    try {
+      await apiClient.patch(`/payments/${payment.id}`, { disbursementNumber: draft || undefined });
+      setMessage({ type: 'ok', text: 'Número de egreso actualizado.' });
+      await load();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err?.response?.data?.message ?? 'No fue posible guardar el número de egreso' });
     }
   }
 
@@ -170,6 +191,31 @@ export default function ContractPaymentsPage() {
                   </select>
                 </div>
 
+                <div className="mt-3 rounded-md border border-institucional/20 bg-institucional/5 p-2.5">
+                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-institucional">
+                    Número de egreso
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={disbursementDrafts[payment.id] ?? ''}
+                      onChange={(e) =>
+                        setDisbursementDrafts((drafts) => ({ ...drafts, [payment.id]: e.target.value }))
+                      }
+                      placeholder="Ej. EG-2026-000452"
+                      className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-institucional focus:outline-none focus:ring-1 focus:ring-institucional"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSaveDisbursement(payment)}
+                      disabled={(disbursementDrafts[payment.id]?.trim() ?? '') === (payment.disbursementNumber ?? '')}
+                      className="rounded-md bg-institucional px-3 py-1 text-xs font-semibold text-white hover:bg-institucional-dark disabled:opacity-40"
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                </div>
+
                 {(payment.submittedDate || payment.paidDate) && (
                   <p className="mt-2 text-xs text-gray-400">
                     {payment.submittedDate && `Radicado: ${payment.submittedDate.slice(0, 10)}`}
@@ -201,6 +247,12 @@ export default function ContractPaymentsPage() {
               label="Cuenta de cobro"
               value={form.accountNumber}
               onChange={(v) => setForm((f) => ({ ...f, accountNumber: v }))}
+            />
+            <Field
+              label="Número de egreso"
+              value={form.disbursementNumber}
+              onChange={(v) => setForm((f) => ({ ...f, disbursementNumber: v }))}
+              placeholder="Se suele conocer solo cuando tesorería ejecuta el pago"
             />
             <Field
               label="Valor (COP)"

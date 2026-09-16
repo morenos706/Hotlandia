@@ -16,6 +16,11 @@ export class CreatePaymentDto {
   @IsString()
   accountNumber?: string;
 
+  @ApiProperty({ required: false, description: 'Número de egreso (comprobante de egreso de tesorería)' })
+  @IsOptional()
+  @IsString()
+  disbursementNumber?: string;
+
   @ApiProperty()
   @IsNumber()
   @Min(0)

@@ -104,6 +104,7 @@ export interface Payment {
   periodLabel: string;
   invoiceNumber?: string | null;
   accountNumber?: string | null;
+  disbursementNumber?: string | null;
   value: string;
   status: PaymentStatus;
   submittedDate?: string | null;

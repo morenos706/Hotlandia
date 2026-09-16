@@ -176,6 +176,7 @@ export class ReportsService {
     paymentsSheet.columns = [
       { header: 'Periodo', key: 'period', width: 20 },
       { header: 'Factura', key: 'invoice', width: 18 },
+      { header: 'Número de egreso', key: 'disbursement', width: 20 },
       { header: 'Valor', key: 'value', width: 18 },
       { header: 'Estado', key: 'status', width: 15 },
     ];
@@ -183,6 +184,7 @@ export class ReportsService {
       paymentsSheet.addRow({
         period: payment.periodLabel,
         invoice: payment.invoiceNumber ?? '',
+        disbursement: payment.disbursementNumber ?? '',
         value: payment.value.toString(),
         status: payment.status,
       });

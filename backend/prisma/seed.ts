@@ -249,6 +249,7 @@ async function main() {
       periodLabel: 'Agosto 2026',
       invoiceNumber: 'FAC-0081',
       accountNumber: 'CC-0081',
+      disbursementNumber: 'EG-2026-000452',
       value: 50_000_000,
       status: 'PAGADO',
       submittedDate: new Date('2026-09-02'),
