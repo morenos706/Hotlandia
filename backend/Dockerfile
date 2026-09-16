@@ -9,6 +9,7 @@ RUN npm run build
 
 FROM node:20-alpine AS runtime
 WORKDIR /app
+RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 COPY --from=base /app/package*.json ./
 COPY --from=base /app/node_modules ./node_modules
